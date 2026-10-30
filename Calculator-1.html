@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Calculator</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #0f1115;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    padding: 16px;
+  }
+
+  .calc {
+    width: 100%;
+    max-width: 340px;
+    background: #1b1e25;
+    border-radius: 28px;
+    padding: 20px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  }
+
+  .display {
+    color: #fff;
+    text-align: right;
+    padding: 16px 8px;
+    min-height: 130px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+  }
+  .expr {
+    color: #8b93a7;
+    font-size: 18px;
+    min-height: 24px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .result {
+    font-size: 54px;
+    font-weight: 300;
+    line-height: 1.1;
+    word-break: break-all;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+
+  button.key {
+    height: 72px;
+    border: 0;
+    border-radius: 36px;
+    font-size: 26px;
+    background: #2a2e38;
+    color: #fff;
+    cursor: pointer;
+    transition: transform 0.08s, filter 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  button.key:hover { filter: brightness(1.15); }
+  button.key:active { transform: scale(0.94); }
+  button.fn { background: #4b5160; }
+  button.op { background: #f59e0b; }
+  button.op.active { background: #fff; color: #f59e0b; }
+  button.eq { background: #22c55e; }
+  button.zero { grid-column: span 2; text-align: left; padding-left: 28px; border-radius: 36px; }
+
+  .privacy-panel {
+    margin-top: 22px; padding: 16px; border-radius: 18px;
+    background: #222631; color: #eef2f7; font-size: 14px;
+  }
+  .privacy-panel h2 { font-size: 18px; margin-bottom: 8px; }
+  .privacy-panel p { color: #b9c1d0; line-height: 1.5; margin: 7px 0; }
+  .privacy-panel a { color: #fbbf24; }
+  .consent-row { display: flex; gap: 9px; align-items: flex-start; margin: 13px 0; color: #d8deea; }
+  .consent-row input { margin-top: 4px; accent-color: #f59e0b; }
+  .privacy-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-top: 12px; }
+  .privacy-actions button, .stop-btn {
+    border: 0; border-radius: 10px; padding: 11px; font-weight: 650;
+    background: #f59e0b; color: #171717; cursor: pointer;
+  }
+  .privacy-actions button.secondary, .stop-btn {
+    background: #3a4150; color: #fff;
+  }
+  .privacy-actions button:disabled { opacity: .4; cursor: not-allowed; }
+  .privacy-status { margin-top: 12px; padding: 10px; border-radius: 9px; background: #171a21; color: #cbd5e1; overflow-wrap: anywhere; }
+  .camera-preview { width: 100%; max-height: 240px; background: #08090c; border-radius: 10px; margin-top: 10px; display: none; }
+  .privacy-foot { text-align: center; margin-top: 13px; font-size: 12px; color: #929bad; }
+  @media (max-width: 380px) { .privacy-actions { grid-template-columns: 1fr; } }
+
+</style>
+</head>
+<body>
+
+<div class="calc" role="application" aria-label="Calculator">
+  <div class="display">
+    <div class="expr" id="expr"></div>
+    <div class="result" id="result">0</div>
+  </div>
+
+  <div class="grid">
+    <button class="key fn" data-action="clear">AC</button>
+    <button class="key fn" data-action="sign">+/−</button>
+    <button class="key fn" data-action="percent">%</button>
+    <button class="key op" data-op="/">÷</button>
+
+    <button class="key" data-digit="7">7</button>
+    <button class="key" data-digit="8">8</button>
+    <button class="key" data-digit="9">9</button>
+    <button class="key op" data-op="*">×</button>
+
+    <button class="key" data-digit="4">4</button>
+    <button class="key" data-digit="5">5</button>
+    <button class="key" data-digit="6">6</button>
+    <button class="key op" data-op="-">−</button>
+
+    <button class="key" data-digit="1">1</button>
+    <button class="key" data-digit="2">2</button>
+    <button class="key" data-digit="3">3</button>
+    <button class="key op" data-op="+">+</button>
+
+    <button class="key zero" data-digit="0">0</button>
+    <button class="key" data-digit=".">.</button>
+    <button class="key eq" data-action="equals">=</button>
+  </div>
+</div>
+
+
+<div class="privacy-panel" aria-labelledby="privacy-title">
+  <h2 id="privacy-title">Privacy & Permission Demo</h2>
+  <p>
+    This educational demo shows what browser permissions can expose.
+    Camera preview stays on this device. Location is displayed locally;
+    this version does not upload either to a server.
+  </p>
+  <label class="consent-row">
+    <input type="checkbox" id="privacyConsent">
+    <span>I have read the <a href="terms.html" target="_blank" rel="noopener">Terms & Conditions / Privacy Disclosure</a>
+    and understand what this demonstration does.</span>
+  </label>
+  <div class="privacy-actions">
+    <button id="cameraBtn" disabled type="button">Enable camera preview</button>
+    <button id="locationBtn" disabled type="button" class="secondary">Share my location</button>
+  </div>
+  <video id="cameraPreview" class="camera-preview" autoplay playsinline muted></video>
+  <button id="stopCameraBtn" class="stop-btn" type="button" style="display:none;width:100%;margin-top:8px">Stop camera</button>
+  <div class="privacy-status" id="privacyStatus" aria-live="polite">
+    Permissions have not been requested. Choose an action above after acknowledging the disclosure.
+  </div>
+  <div class="privacy-foot">No automatic camera or location requests. You remain in control.</div>
+</div>
+
+<script>
+/* ---------------- Calculator logic ---------------- */
+const exprEl = document.getElementById('expr');
+const resultEl = document.getElementById('result');
+const opSymbols = { '/': '÷', '*': '×', '-': '−', '+': '+' };
+
+let current = '0';
+let previous = null;
+let operator = null;
+let fresh = false;
+
+function format(n) {
+  if (!isFinite(n)) return 'Error';
+  return String(Number(n.toPrecision(12)));
+}
+
+function compute(a, b, op) {
+  switch (op) {
+    case '+': return a + b;
+    case '-': return a - b;
+    case '*': return a * b;
+    case '/': return b === 0 ? NaN : a / b;
+  }
+  return b;
+}
+
+function render() {
+  resultEl.textContent = current;
+  document.querySelectorAll('button.op').forEach(btn =>
+    btn.classList.toggle('active', btn.dataset.op === operator && fresh));
+}
+
+function inputDigit(d) {
+  if (fresh) {
+    current = d === '.' ? '0.' : d;
+    fresh = false;
+  } else if (d === '.') {
+    if (!current.includes('.')) current += '.';
+  } else if (current === '0') {
+    current = d;
+  } else if (current.replace(/[-.]/g, '').length < 12) {
+    current += d;
+  }
+  render();
+}
+
+function reset() {
+  current = '0';
+  previous = null;
+  operator = null;
+  fresh = false;
+  exprEl.textContent = '';
+  render();
+}
+
+function setOperator(op) {
+  if (operator && !fresh) {
+    const r = compute(parseFloat(previous), parseFloat(current), operator);
+    current = format(r);
+    if (current === 'Error') return reset();
+    previous = current;
+  } else {
+    previous = current;
+  }
+  operator = op;
+  fresh = true;
+  exprEl.textContent = `${previous} ${opSymbols[op]}`;
+  render();
+}
+
+function equals() {
+  if (!operator) return;
+  const a = parseFloat(previous);
+  const b = parseFloat(current);
+  exprEl.textContent = `${previous} ${opSymbols[operator]} ${current} =`;
+  current = format(compute(a, b, operator));
+  previous = null;
+  operator = null;
+  fresh = true;
+  if (current === 'Error') { reset(); resultEl.textContent = 'Error'; return; }
+  render();
+}
+
+function toggleSign() {
+  if (current === '0' || current === 'Error') return;
+  current = current.startsWith('-') ? current.slice(1) : '-' + current;
+  render();
+}
+
+function percent() {
+  current = format(parseFloat(current) / 100);
+  fresh = false;
+  render();
+}
+
+document.querySelector('.grid').addEventListener('click', e => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  if (btn.dataset.digit !== undefined) inputDigit(btn.dataset.digit);
+  else if (btn.dataset.op) setOperator(btn.dataset.op);
+  else switch (btn.dataset.action) {
+    case 'clear': reset(); break;
+    case 'sign': toggleSign(); break;
+    case 'percent': percent(); break;
+    case 'equals': equals(); break;
+  }
+});
+
+document.addEventListener('keydown', e => {
+  if (/^[0-9.]$/.test(e.key)) inputDigit(e.key);
+  else if (['+', '-', '*', '/'].includes(e.key)) setOperator(e.key);
+  else if (e.key === 'Enter' || e.key === '=') { e.preventDefault(); equals(); }
+  else if (e.key === 'Escape') reset();
+  else if (e.key === 'Backspace' && !fresh) {
+    current = current.length > 1 ? current.slice(0, -1) : '0';
+    if (current === '-') current = '0';
+    render();
+  }
+});
+
+/* ---------------- Permissions ----------------
+   Calling these APIs makes the browser show its own
+   permission prompt, the same way other websites do. */
+function askPermissions() {
+  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(stream => stream.getTracks().forEach(t => t.stop()))
+      .catch(() => {});
+  }
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(() => {}, () => {}, { timeout: 15000 });
+  }
+}
+
+// Permissions are requested only after the visitor explicitly clicks a control.
+
+
+/* ---------------- Explicit privacy demo controls ---------------- */
+const consentBox = document.getElementById('privacyConsent');
+const cameraBtn = document.getElementById('cameraBtn');
+const locationBtn = document.getElementById('locationBtn');
+const cameraPreview = document.getElementById('cameraPreview');
+const stopCameraBtn = document.getElementById('stopCameraBtn');
+const privacyStatus = document.getElementById('privacyStatus');
+let cameraStream = null;
+
+consentBox.addEventListener('change', () => {
+  cameraBtn.disabled = !consentBox.checked;
+  locationBtn.disabled = !consentBox.checked;
+  privacyStatus.textContent = consentBox.checked
+    ? 'Disclosure acknowledged. Camera and location are still off until you choose either button.'
+    : 'Please read and acknowledge the disclosure before using the demo controls.';
+});
+
+cameraBtn.addEventListener('click', async () => {
+  if (!consentBox.checked) return;
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    privacyStatus.textContent = 'Camera access requires HTTPS or localhost and a supported browser.';
+    return;
+  }
+  try {
+    cameraStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+    cameraPreview.srcObject = cameraStream;
+    cameraPreview.style.display = 'block';
+    stopCameraBtn.style.display = 'block';
+    privacyStatus.textContent = 'Camera is active. Preview is displayed only on this device; this demo does not transmit or record it.';
+  } catch (error) {
+    privacyStatus.textContent = 'Camera was not enabled: ' + (error.message || 'permission denied');
+  }
+});
+
+stopCameraBtn.addEventListener('click', () => {
+  if (cameraStream) cameraStream.getTracks().forEach(track => track.stop());
+  cameraStream = null;
+  cameraPreview.srcObject = null;
+  cameraPreview.style.display = 'none';
+  stopCameraBtn.style.display = 'none';
+  privacyStatus.textContent = 'Camera stopped.';
+});
+
+locationBtn.addEventListener('click', () => {
+  if (!consentBox.checked) return;
+  if (!navigator.geolocation) {
+    privacyStatus.textContent = 'Geolocation is not supported by this browser.';
+    return;
+  }
+  privacyStatus.textContent = 'Waiting for browser location permission...';
+  navigator.geolocation.getCurrentPosition(
+    position => {
+      const { latitude, longitude, accuracy } = position.coords;
+      privacyStatus.textContent =
+        'Location shared locally for this demo: latitude ' + latitude.toFixed(6) +
+        ', longitude ' + longitude.toFixed(6) +
+        ', accuracy approximately ' + Math.round(accuracy) +
+        ' metres. These coordinates are not uploaded to a server.';
+    },
+    error => {
+      privacyStatus.textContent = 'Location was not shared: ' + (error.message || 'permission denied');
+    },
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+  );
+});
+
+window.addEventListener('beforeunload', () => {
+  if (cameraStream) cameraStream.getTracks().forEach(track => track.stop());
+});
+
+render();
+</script>
+</body>
+</html>
