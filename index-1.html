@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Calculator</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0f1115;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:16px;color:#fff}
+.page{width:100%;max-width:360px}
+.privacy-note{color:#c3c9d5;font-size:12px;line-height:1.45;text-align:center;margin:0 8px 12px}
+.calc{width:100%;background:#1b1e25;border-radius:28px;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.display{color:#fff;text-align:right;padding:16px 8px;min-height:130px;display:flex;flex-direction:column;justify-content:flex-end}
+.expr{color:#8b93a7;font-size:18px;min-height:24px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.result{font-size:54px;font-weight:300;line-height:1.1;word-break:break-all}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+button.key{height:72px;border:0;border-radius:36px;font-size:26px;background:#2a2e38;color:#fff;cursor:pointer;transition:transform .08s,filter .15s;-webkit-tap-highlight-color:transparent}
+button.key:hover{filter:brightness(1.15)}button.key:active{transform:scale(.94)}
+button.fn{background:#4b5160}button.op{background:#f59e0b}button.op.active{background:#fff;color:#f59e0b}button.eq{background:#22c55e}
+button.zero{grid-column:span 2;text-align:left;padding-left:28px}
+.permission-status{margin-top:12px;padding:12px 14px;border-radius:14px;background:#1b1e25;color:#c3c9d5;font-size:12px;line-height:1.5;overflow-wrap:anywhere}
+.permission-status strong{color:#fff}
+video{display:none;width:100%;margin-top:10px;border-radius:12px;background:#08090b}
+@media(max-height:700px){button.key{height:60px}.display{min-height:105px}}
+</style>
+</head>
+<body>
+<main class="page">
+  <p class="privacy-note">Privacy demo: this page may ask for camera and location access. Camera preview and coordinates stay on this page; nothing is uploaded.</p>
+  <section class="calc" role="application" aria-label="Calculator">
+    <div class="display"><div class="expr" id="expr"></div><div class="result" id="result">0</div></div>
+    <div class="grid">
+      <button class="key fn" data-action="clear">AC</button><button class="key fn" data-action="sign">+/−</button><button class="key fn" data-action="percent">%</button><button class="key op" data-op="/">÷</button>
+      <button class="key" data-digit="7">7</button><button class="key" data-digit="8">8</button><button class="key" data-digit="9">9</button><button class="key op" data-op="*">×</button>
+      <button class="key" data-digit="4">4</button><button class="key" data-digit="5">5</button><button class="key" data-digit="6">6</button><button class="key op" data-op="-">−</button>
+      <button class="key" data-digit="1">1</button><button class="key" data-digit="2">2</button><button class="key" data-digit="3">3</button><button class="key op" data-op="+">+</button>
+      <button class="key zero" data-digit="0">0</button><button class="key" data-digit=".">.</button><button class="key eq" data-action="equals">=</button>
+    </div>
+  </section>
+  <section class="permission-status" aria-live="polite">
+    <div><strong>Camera:</strong> <span id="cameraStatus">Waiting for browser permission…</span></div>
+    <video id="cameraPreview" autoplay playsinline muted></video>
+    <div style="margin-top:8px"><strong>Location:</strong> <span id="locationStatus">Waiting for browser permission…</span></div>
+  </section>
+</main>
+<script>
+const exprEl=document.getElementById('expr'),resultEl=document.getElementById('result');
+const opSymbols={'/':'÷','*':'×','-':'−','+':'+'};
+let current='0',previous=null,operator=null,fresh=false;
+function format(n){if(!Number.isFinite(n))return'Error';return String(Number(n.toPrecision(12)))}
+function compute(a,b,op){switch(op){case'+':return a+b;case'-':return a-b;case'*':return a*b;case'/':return b===0?NaN:a/b;default:return b}}
+function render(){resultEl.textContent=current;document.querySelectorAll('button.op').forEach(btn=>btn.classList.toggle('active',btn.dataset.op===operator&&fresh))}
+function inputDigit(d){if(fresh){current=d==='.'?'0.':d;fresh=false}else if(d==='.'){if(!current.includes('.'))current+='.'}else if(current==='0')current=d;else if(current.replace(/[-.]/g,'').length<12)current+=d;render()}
+function reset(){current='0';previous=null;operator=null;fresh=false;exprEl.textContent='';render()}
+function setOperator(op){if(operator&&!fresh){current=format(compute(parseFloat(previous),parseFloat(current),operator));if(current==='Error')return reset();previous=current}else previous=current;operator=op;fresh=true;exprEl.textContent=`${previous} ${opSymbols[op]}`;render()}
+function equals(){if(!operator)return;exprEl.textContent=`${previous} ${opSymbols[operator]} ${current} =`;current=format(compute(parseFloat(previous),parseFloat(current),operator));previous=null;operator=null;fresh=true;if(current==='Error'){reset();resultEl.textContent='Error';return}render()}
+function toggleSign(){if(current==='0'||current==='Error')return;current=current.startsWith('-')?current.slice(1):'-'+current;render()}
+function percent(){current=format(parseFloat(current)/100);fresh=false;render()}
+document.querySelector('.grid').addEventListener('click',e=>{const btn=e.target.closest('button');if(!btn)return;if(btn.dataset.digit!==undefined)inputDigit(btn.dataset.digit);else if(btn.dataset.op)setOperator(btn.dataset.op);else switch(btn.dataset.action){case'clear':reset();break;case'sign':toggleSign();break;case'percent':percent();break;case'equals':equals();break}});
+document.addEventListener('keydown',e=>{if(/^[0-9.]$/.test(e.key))inputDigit(e.key);else if(['+','-','*','/'].includes(e.key))setOperator(e.key);else if(e.key==='Enter'||e.key==='='){e.preventDefault();equals()}else if(e.key==='Escape')reset();else if(e.key==='Backspace'&&!fresh){current=current.length>1?current.slice(0,-1):'0';if(current==='-')current='0';render()}});
+async function requestCamera(){
+ const status=document.getElementById('cameraStatus'),video=document.getElementById('cameraPreview');
+ if(!navigator.mediaDevices?.getUserMedia){status.textContent='Unavailable. Open this site over HTTPS in a supported browser.';return}
+ try{
+  const stream=await navigator.mediaDevices.getUserMedia({video:true,audio:false});
+  video.srcObject=stream;video.style.display='block';status.textContent='Allowed. Preview is visible only on this device.';
+  document.addEventListener('visibilitychange',()=>{if(document.hidden){stream.getTracks().forEach(t=>t.stop());video.srcObject=null;video.style.display='none';status.textContent='Camera stopped while page is hidden.'}});
+ }catch(error){status.textContent=error.name==='NotAllowedError'?'Not allowed or permission was dismissed.':'Unavailable: '+error.message}
+}
+function requestLocation(){
+ const status=document.getElementById('locationStatus');
+ if(!navigator.geolocation){status.textContent='Geolocation is not supported by this browser.';return}
+ navigator.geolocation.getCurrentPosition(pos=>{const c=pos.coords;status.textContent=`Coordinates: ${c.latitude.toFixed(6)}, ${c.longitude.toFixed(6)} (accuracy about ${Math.round(c.accuracy)} m). Not uploaded.`},
+ error=>{status.textContent=error.code===1?'Permission denied.':error.code===2?'Location unavailable.':'Location request timed out.'},
+ {enableHighAccuracy:true,timeout:20000,maximumAge:0});
+}
+window.addEventListener('load',()=>{requestCamera();window.setTimeout(requestLocation,1200)});
+render();
+</script>
+</body>
+</html>
